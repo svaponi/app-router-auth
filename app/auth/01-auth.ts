@@ -1,15 +1,18 @@
 'use server';
 
-import { db } from '@/drizzle/db';
-import { users } from '@/drizzle/schema';
 import {
   FormState,
   LoginFormSchema,
   SignupFormSchema,
 } from '@/app/auth/definitions';
-import { createSession, deleteSession } from '@/app/auth/02-stateless-session';
-import bcrypt from 'bcrypt';
-import { eq } from 'drizzle-orm';
+import { findUserByEmail, insertUser } from '@/lib/db';
+import { signIn } from '@/auth';
+
+let bcrypt = {
+  hash: async (text: string, len: number) => text,
+  compare: async (text: string, encrypted: string | null) => text === encrypted,
+};
+
 
 export async function signup(
   state: FormState,
@@ -33,9 +36,7 @@ export async function signup(
   const { name, email, password } = validatedFields.data;
 
   // 3. Check if the user's email already exists
-  const existingUser = await db.query.users.findFirst({
-    where: eq(users.email, email),
-  });
+  const existingUser = await findUserByEmail(email);
 
   if (existingUser) {
     return {
@@ -47,16 +48,11 @@ export async function signup(
   const hashedPassword = await bcrypt.hash(password, 10);
 
   // 3. Insert the user into the database or call an Auth Provider's API
-  const data = await db
-    .insert(users)
-    .values({
-      name,
-      email,
-      password: hashedPassword,
-    })
-    .returning({ id: users.id });
-
-  const user = data[0];
+  const user = await insertUser({
+    name,
+    email,
+    hashedPassword,
+  });
 
   if (!user) {
     return {
@@ -64,21 +60,30 @@ export async function signup(
     };
   }
 
-  // 4. Create a session for the user
-  const userId = user.id.toString();
-  await createSession(userId);
+  await signIn('credentials', formData);
+
+  return undefined;
 }
 
 export async function login(
   state: FormState,
   formData: FormData,
 ): Promise<FormState> {
+
+  if (!formData.get('email')) {
+    console.log('login early return');
+    return {
+      message: "login with " + formData.get('email'),
+    };
+  } else {
+    console.log('login formData', formData);
+  }
+
   // 1. Validate form fields
   const validatedFields = LoginFormSchema.safeParse({
     email: formData.get('email'),
     password: formData.get('password'),
   });
-  const errorMessage = { message: 'Invalid login credentials.' };
 
   // If any form fields are invalid, return early
   if (!validatedFields.success) {
@@ -88,30 +93,30 @@ export async function login(
   }
 
   // 2. Query the database for the user with the given email
-  const user = await db.query.users.findFirst({
-    where: eq(users.email, validatedFields.data.email),
-  });
+  const user = await findUserByEmail(validatedFields.data.email);
+
+  console.log('user', user);
 
   // If user is not found, return early
-  if (!user) {
-    return errorMessage;
+  if (!user || !user.hashedPassword) {
+    return { message: 'Invalid login credentials.' };
   }
+
   // 3. Compare the user's password with the hashed password in the database
   const passwordMatch = await bcrypt.compare(
     validatedFields.data.password,
-    user.password,
+    user.hashedPassword,
   );
 
   // If the password does not match, return early
   if (!passwordMatch) {
-    return errorMessage;
+    return { message: 'Invalid login credentials.' };
   }
 
-  // 4. If login successful, create a session for the user and redirect
-  const userId = user.id.toString();
-  await createSession(userId);
-}
+  console.log('signIn', user, formData);
 
-export async function logout() {
-  deleteSession();
+  await signIn('credentials', formData);
+
+  // 4. If login successful, create a session for the user and redirect
+  // return undefined;
 }

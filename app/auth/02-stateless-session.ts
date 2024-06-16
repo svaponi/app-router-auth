@@ -1,11 +1,12 @@
 import 'server-only';
 
 import type { SessionPayload } from '@/app/auth/definitions';
-import { SignJWT, jwtVerify } from 'jose';
+import { jwtVerify, SignJWT } from 'jose';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 const secretKey = process.env.SECRET;
+if (!secretKey?.length) throw new Error(`Missing SECRET`);
 const key = new TextEncoder().encode(secretKey);
 
 export async function encrypt(payload: SessionPayload) {
@@ -23,6 +24,10 @@ export async function decrypt(session: string | undefined = '') {
     });
     return payload;
   } catch (error) {
+    console.error(
+      'decrypt error',
+      error instanceof Error ? error.message ?? error : error,
+    );
     return null;
   }
 }

@@ -13,6 +13,7 @@ const publicLinks = [
 
 const protectedLinks = [
   { href: '/', title: 'Home' },
+  { href: '/products', title: 'Products' },
   { href: '/dashboard', title: 'Dashboard' },
 ];
 export default async function Header() {

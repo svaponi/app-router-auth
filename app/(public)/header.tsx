@@ -9,6 +9,7 @@ const publicLinks = [
   { href: '#', title: 'About' },
   { href: '#', title: 'Services' },
   { href: '#', title: 'Contact' },
+  { href: '/aurora', title: 'Aurora' },
 ];
 
 const protectedLinks = [

@@ -25,6 +25,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "drizzle-orm": "^0.31.2",
+    "framer-motion": "^11.2.11",
     "jose": "^5.2.3",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.356.0",

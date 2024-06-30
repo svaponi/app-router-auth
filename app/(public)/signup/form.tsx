@@ -5,12 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { signup } from '@/app/auth/01-auth';
 import { useFormState, useFormStatus } from 'react-dom';
+import { Spinner } from '@/components/ui/spinner';
+import { InputCSRF } from '@/app/components/InputCSRF';
 
 export function SignupForm() {
   const [state, action] = useFormState(signup, undefined);
 
   return (
     <form action={action}>
+      <InputCSRF />
       <div className="flex flex-col gap-2">
         <div>
           <Label htmlFor="name">Name</Label>
@@ -40,6 +43,9 @@ export function SignupForm() {
             </ul>
           </div>
         )}
+        {state?.message && (
+          <p className="text-sm text-red-500">{state.message}</p>
+        )}
         <SignupButton />
       </div>
     </form>
@@ -50,8 +56,12 @@ export function SignupButton() {
   const { pending } = useFormStatus();
 
   return (
-    <Button aria-disabled={pending} type="submit" className="mt-2 w-full">
-      {pending ? 'Submitting...' : 'Sign up'}
+    <Button aria-disabled={pending} type="submit" className="mt-4 w-full">
+      {pending ? (
+        <Spinner size={'small'} style={{ marginRight: '0.5rem' }} />
+      ) : (
+        <>Sign up</>
+      )}
     </Button>
   );
 }

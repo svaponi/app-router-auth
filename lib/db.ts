@@ -1,52 +1,61 @@
-import { and, eq } from 'drizzle-orm';
-import { users } from '@/drizzle/schema';
+import clientPromise from '@/lib/mongodb';
 import { User } from 'next-auth';
-import { db } from '@/drizzle/db';
 
-type UserSelect = typeof users.$inferSelect;
-type UserInsert = typeof users.$inferInsert;
+export async function getDb() {
+  const client = await clientPromise;
+  return client.db();
+}
 
-export interface NewUser {
-  name: string;
+export async function getProducts(query?: any) {
+  const db = await getDb();
+  const collection = db.collection('products');
+  const filter: any = {};
+  const { q } = query ?? {};
+  if (q && q.length) {
+    filter.title = { $regex: q, $options: 'i' };
+  }
+  return await collection.find(filter).toArray();
+}
+
+interface DUser extends User {
+  id?: string;
   email: string;
-  hashedPassword: string;
+  name?: string;
+  image?: string;
+  hashedPassword?: string;
 }
 
-export interface AppUser extends User {
-  id: string;
-  name: string;
-  email: string;
+export async function insertUser(user: DUser): Promise<DUser> {
+  const db = await getDb();
+  const collection = db.collection('users');
+  const result = await collection.insertOne(user);
+  console.log('insertUser', user, result);
+  return { ...user, id: result.insertedId.toString() };
 }
 
-export async function insertUser(user: NewUser): Promise<User> {
-  const values: UserInsert = { ...user };
-  const data = await db.insert(users).values(values).returning();
-  return toUser(data[0]);
+export async function updateUser(user: DUser): Promise<DUser> {
+  const db = await getDb();
+  const collection = db.collection('users');
+  const result = await collection.replaceOne({ email: user.email }, user);
+  console.log('updateUser', user, result);
+  return user;
 }
 
-export async function findUserByEmail(email: string): Promise<AppUser | null> {
-  const data = await db.select().from(users).where(eq(users.email, email));
-  return data.length ? toUser(data[0]) : null;
+export async function findUserByEmail(email: string): Promise<DUser | null> {
+  const db = await getDb();
+  const collection = db.collection('users');
+  const user = await collection.findOne<DUser>({ email });
+  console.log('findUserByEmail', email, user);
+  return user;
 }
 
 export async function findUserByCredentials(
   email: string,
   hashedPassword: string,
-): Promise<AppUser | null> {
-  const data = await db
-    .select()
-    .from(users)
-    .where(
-      and(eq(users.email, email), eq(users.hashedPassword, hashedPassword)),
-    );
-  return data.length ? toUser(data[0]) : null;
-}
-
-function toUser(dbUser: UserSelect): AppUser {
-  return {
-    id: dbUser.id,
-    name: dbUser.name ?? dbUser.email.split('@')[0],
-    email: dbUser.email,
-    image: dbUser.image,
-  };
+): Promise<DUser | null> {
+  const db = await getDb();
+  const collection = db.collection('users');
+  const user = await collection.findOne<DUser>({ email, hashedPassword });
+  console.log('findUserByCredentials', email, hashedPassword, user);
+  return user;
 }

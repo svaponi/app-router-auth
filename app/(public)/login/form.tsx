@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { login } from '@/app/auth/01-auth';
 import Link from 'next/link';
 import { useFormState, useFormStatus } from 'react-dom';
+import { Spinner } from '@/components/ui/spinner';
 import { InputCSRF } from '@/app/components/InputCSRF';
 
 export function LoginForm() {
@@ -53,7 +54,11 @@ export function LoginButton() {
 
   return (
     <Button aria-disabled={pending} type="submit" className="mt-4 w-full">
-      {pending ? 'Submitting...' : 'Login'}
+      {pending ? (
+        <Spinner size={'small'} style={{ marginRight: '0.5rem' }} />
+      ) : (
+        <>Login</>
+      )}
     </Button>
   );
 }
